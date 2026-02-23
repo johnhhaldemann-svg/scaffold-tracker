@@ -1,0 +1,700 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Scaffold Tag Tracker (Mobile)</title>
+
+  <!-- iOS "Add to Home Screen" support -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+  <style>
+    :root{
+      --bg:#0b1220;
+      --card:#111b2e;
+      --card2:#0f172a;
+      --ink:#e5e7eb;
+      --muted:#9ca3af;
+      --line:rgba(255,255,255,0.10);
+      --accent:#60a5fa;
+
+      --okbg: rgba(16,185,129,0.16);   /* green */
+      --warnbg: rgba(245,158,11,0.18); /* yellow */
+      --badbg: rgba(239,68,68,0.18);   /* red */
+      --nibg: rgba(99,102,241,0.18);   /* not-inspected */
+    }
+
+    *{ box-sizing:border-box; }
+    html,body{ height:100%; }
+    body{
+      margin:0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, Helvetica, sans-serif;
+      background: radial-gradient(1200px 800px at 30% -10%, rgba(96,165,250,0.25), transparent 55%),
+                  radial-gradient(900px 700px at 95% 0%, rgba(99,102,241,0.22), transparent 45%),
+                  var(--bg);
+      color:var(--ink);
+    }
+
+    /* Top app bar */
+    .appbar{
+      position:sticky;
+      top:0;
+      z-index:50;
+      backdrop-filter: blur(10px);
+      background: rgba(11,18,32,0.80);
+      border-bottom:1px solid var(--line);
+      padding: env(safe-area-inset-top) 14px 10px 14px;
+    }
+    .appbar h1{
+      margin:0;
+      font-size:16px;
+      font-weight:700;
+      letter-spacing:0.2px;
+    }
+    .appbar .sub{
+      margin-top:4px;
+      font-size:12px;
+      color:var(--muted);
+      line-height:1.2;
+    }
+
+    .wrap{
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 12px 14px calc(100px + env(safe-area-inset-bottom)) 14px;
+    }
+
+    .card{
+      background: rgba(17,27,46,0.86);
+      border:1px solid var(--line);
+      border-radius:16px;
+      padding:12px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+      margin: 12px 0;
+    }
+    .card h2{
+      margin:0 0 10px 0;
+      font-size:13px;
+      color: var(--muted);
+      font-weight:700;
+      letter-spacing:0.4px;
+      text-transform:uppercase;
+    }
+
+    /* Inputs */
+    label{ display:block; font-size:12px; color:var(--muted); margin-bottom:6px; }
+    input[type="text"], input[type="date"], select, textarea{
+      width:100%;
+      border:1px solid var(--line);
+      background: rgba(15,23,42,0.85);
+      color:var(--ink);
+      padding:12px 12px;
+      border-radius:12px;
+      font-size:16px; /* prevents iOS zoom */
+      outline:none;
+    }
+    textarea{ min-height: 88px; resize: vertical; }
+
+    .row{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap:10px;
+    }
+    @media (min-width: 720px){
+      .row.two{ grid-template-columns: 1fr 1fr; }
+      .row.three{ grid-template-columns: 1fr 1fr 1fr; }
+    }
+
+    /* Badges / summary */
+    .badges{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      margin-top:10px;
+    }
+    .badge{
+      padding:10px 12px;
+      border-radius:14px;
+      border:1px solid var(--line);
+      background: rgba(15,23,42,0.65);
+      font-size:13px;
+      color:var(--ink);
+    }
+    .badge strong{ font-size:14px; }
+    .badge.warn{ border-color: rgba(245,158,11,0.35); background: rgba(245,158,11,0.10); }
+
+    /* Warning box */
+    .alert{
+      margin-top:10px;
+      border:1px solid rgba(245,158,11,0.35);
+      background: rgba(245,158,11,0.10);
+      border-radius:14px;
+      padding:10px 12px;
+      display:none;
+    }
+    .alert .t{ font-weight:800; font-size:13px; }
+    .alert ul{ margin:8px 0 0 18px; padding:0; color:var(--ink); }
+    .alert li{ margin:4px 0; font-size:13px; }
+
+    /* Scaffold list */
+    .scaffold-item{
+      border:1px solid var(--line);
+      background: rgba(15,23,42,0.65);
+      border-radius:16px;
+      padding:12px;
+      margin-top:10px;
+      position:relative;
+      overflow:hidden;
+    }
+    .scaffold-item.status-green{ background: linear-gradient(0deg, var(--okbg), rgba(15,23,42,0.65)); }
+    .scaffold-item.status-yellow{ background: linear-gradient(0deg, var(--warnbg), rgba(15,23,42,0.65)); }
+    .scaffold-item.status-red{ background: linear-gradient(0deg, var(--badbg), rgba(15,23,42,0.65)); }
+    .scaffold-item.not-inspected{
+      outline: 2px solid rgba(99,102,241,0.25);
+      background: linear-gradient(0deg, var(--nibg), rgba(15,23,42,0.65));
+    }
+
+    .scaffold-head{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      margin-bottom:10px;
+    }
+    .pill{
+      font-size:12px;
+      padding:6px 10px;
+      border-radius:999px;
+      border:1px solid var(--line);
+      background: rgba(0,0,0,0.15);
+      color:var(--muted);
+      white-space:nowrap;
+    }
+
+    .toggle{
+      display:flex;
+      align-items:center;
+      gap:10px;
+    }
+    .toggle input{
+      width:22px;
+      height:22px;
+      accent-color: var(--accent);
+    }
+
+    /* Buttons */
+    .btn-row{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+    }
+    button{
+      border:none;
+      border-radius:14px;
+      padding:12px 14px;
+      font-size:14px;
+      font-weight:800;
+      cursor:pointer;
+    }
+    .btn{
+      background: rgba(96,165,250,0.20);
+      color: var(--ink);
+      border:1px solid rgba(96,165,250,0.35);
+    }
+    .btn:active{ transform: scale(0.99); }
+
+    .btn-ghost{
+      background: transparent;
+      color: var(--muted);
+      border:1px solid var(--line);
+    }
+
+    .btn-danger{
+      background: rgba(239,68,68,0.16);
+      color: var(--ink);
+      border:1px solid rgba(239,68,68,0.35);
+    }
+
+    /* Floating action bar */
+    .fabbar{
+      position:fixed;
+      left:0; right:0; bottom:0;
+      padding: 10px 14px calc(10px + env(safe-area-inset-bottom)) 14px;
+      background: rgba(11,18,32,0.86);
+      border-top:1px solid var(--line);
+      backdrop-filter: blur(10px);
+      z-index:60;
+    }
+    .fabbar-inner{
+      max-width: 980px;
+      margin:0 auto;
+      display:flex;
+      gap:10px;
+      align-items:center;
+      justify-content:space-between;
+    }
+    .fab{
+      flex:1;
+      background: rgba(96,165,250,0.22);
+      color: var(--ink);
+      border:1px solid rgba(96,165,250,0.40);
+      padding:14px 14px;
+      border-radius:16px;
+      font-size:15px;
+      font-weight:900;
+    }
+    .fab-secondary{
+      width:auto;
+      background: transparent;
+      color: var(--muted);
+      border:1px solid var(--line);
+      padding:14px 12px;
+      border-radius:16px;
+      font-size:13px;
+      font-weight:800;
+    }
+
+    .tiny{
+      font-size:12px;
+      color:var(--muted);
+      line-height:1.35;
+      margin-top:10px;
+    }
+
+    /* Print */
+    @media print{
+      .fabbar, .btn-row, .tiny{ display:none !important; }
+      body{ background:#fff; color:#000; }
+      .appbar{ position:static; background:#fff; color:#000; border:none; }
+      .card, .scaffold-item{ box-shadow:none; background:#fff; color:#000; border:1px solid #ccc; }
+      input, select, textarea{ border:1px solid #ccc; background:#fff; color:#000; }
+      .badge{ background:#fff; border:1px solid #ccc; color:#000; }
+      .alert{ display:none !important; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="appbar">
+    <h1>Scaffold Tag Tracker (Mobile)</h1>
+    <div class="sub">Autosaves on your phone • Works offline (local storage) • Print/Save as PDF anytime</div>
+  </div>
+
+  <div class="wrap">
+
+    <div class="card">
+      <h2>Project Information</h2>
+      <div class="row three">
+        <div>
+          <label>Project Name</label>
+          <input id="projectName" type="text" placeholder="Project name">
+        </div>
+        <div>
+          <label>Date</label>
+          <input id="reportDate" type="date">
+        </div>
+        <div>
+          <label>Competent Person</label>
+          <input id="competentPerson" type="text" placeholder="Name">
+        </div>
+      </div>
+
+      <div class="badges" style="margin-top:12px;">
+        <div class="badge"><strong>Total Scaffolds:</strong> <span id="totalScaffolds">0</span></div>
+        <div class="badge"><strong>Inspected Today:</strong> <span id="inspectedCount">0</span></div>
+        <div class="badge warn"><strong>Not Inspected:</strong> <span id="notInspectedCount">0</span></div>
+      </div>
+
+      <div id="notInspectedAlert" class="alert">
+        <div class="t">Warning: Scaffolds NOT marked inspected today</div>
+        <ul id="notInspectedList"></ul>
+      </div>
+
+      <div class="tiny">
+        Tip: On iPhone/Android, open this file in your browser → Share/More → <strong>Add to Home Screen</strong> (optional).
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Quick Reference Visual</h2>
+      <!-- Put the image in the same folder as this HTML and name it scaffold-checklist.png -->
+      <img src="scaffold-checklist.png" alt="Scaffold Checklist" style="width:100%; max-width:520px; display:block; margin:0 auto; border-radius:14px; border:1px solid var(--line); background:rgba(0,0,0,0.12);" />
+      <div class="tiny">Image not showing? Make sure the file is named <strong>scaffold-checklist.png</strong> and is in the same folder as this HTML.</div>
+    </div>
+
+    <div class="card">
+      <h2>Scaffold Tag Tracker</h2>
+
+      <div id="scaffoldList"></div>
+
+      <div class="btn-row" style="margin-top:12px;">
+        <button class="btn" type="button" onclick="addScaffold()">+ Add Scaffold</button>
+        <button class="btn-ghost" type="button" onclick="window.print()">Print / Save as PDF</button>
+        <button class="btn-ghost" type="button" onclick="downloadBackup()">Export Backup (JSON)</button>
+        <button class="btn-ghost" type="button" onclick="triggerImport()">Import Backup</button>
+        <button class="btn-danger" type="button" onclick="clearAll()">Clear All</button>
+        <input id="importFile" type="file" accept="application/json" style="display:none" />
+      </div>
+
+      <div class="tiny">
+        Auto-highlighting: row turns Green/Yellow/Red by status. If NOT inspected, it gets a blue outline/highlight and appears in the warning list.
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Deficiencies / Corrective Actions (General)</h2>
+      <textarea id="globalNotes" placeholder="Describe deficiencies and corrective actions..."></textarea>
+    </div>
+
+    <div class="card">
+      <h2>Inspector Verification</h2>
+      <div class="row two">
+        <div>
+          <label>Inspector Name</label>
+          <input id="inspectorName" type="text" placeholder="Name">
+        </div>
+        <div>
+          <label>Signature / Initials</label>
+          <input id="inspectorSig" type="text" placeholder="Signature / initials">
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Bottom bar for mobile one-hand use -->
+  <div class="fabbar">
+    <div class="fabbar-inner">
+      <button class="fab" type="button" onclick="addScaffold()">+ Add Scaffold</button>
+      <button class="fab-secondary" type="button" onclick="window.print()">Print/PDF</button>
+    </div>
+  </div>
+
+<script>
+/* =========================
+   Mobile Scaffold Tracker
+   - Responsive card layout (each scaffold is a card)
+   - Auto color highlighting (status)
+   - Total counter + inspected + not inspected
+   - Warning list of not-inspected tags
+   - Autosave to phone via localStorage
+   - Export/Import JSON backup
+   ========================= */
+
+const STORAGE_KEY = "scaffold_tracker_mobile_v1";
+
+function uid(){
+  return "s_" + Math.random().toString(36).slice(2,10) + Date.now().toString(36);
+}
+
+function defaultScaffold(){
+  return {
+    id: uid(),
+    tag: "",
+    location: "",
+    inspected: false,
+    status: "",
+    notes: ""
+  };
+}
+
+function getState(){
+  return {
+    meta: {
+      projectName: document.getElementById("projectName").value || "",
+      reportDate: document.getElementById("reportDate").value || "",
+      competentPerson: document.getElementById("competentPerson").value || "",
+      globalNotes: document.getElementById("globalNotes").value || "",
+      inspectorName: document.getElementById("inspectorName").value || "",
+      inspectorSig: document.getElementById("inspectorSig").value || ""
+    },
+    scaffolds: readScaffoldsFromDOM()
+  };
+}
+
+function setMeta(meta){
+  document.getElementById("projectName").value = meta.projectName || "";
+  document.getElementById("reportDate").value = meta.reportDate || "";
+  document.getElementById("competentPerson").value = meta.competentPerson || "";
+  document.getElementById("globalNotes").value = meta.globalNotes || "";
+  document.getElementById("inspectorName").value = meta.inspectorName || "";
+  document.getElementById("inspectorSig").value = meta.inspectorSig || "";
+}
+
+function save(){
+  try{
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(getState()));
+  }catch(e){
+    // If storage full or blocked, we silently continue.
+  }
+}
+
+function load(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(!raw) return null;
+    return JSON.parse(raw);
+  }catch(e){
+    return null;
+  }
+}
+
+function readScaffoldsFromDOM(){
+  const cards = Array.from(document.querySelectorAll(".scaffold-item"));
+  return cards.map(card => ({
+    id: card.dataset.id,
+    tag: card.querySelector(".f-tag").value || "",
+    location: card.querySelector(".f-loc").value || "",
+    inspected: !!card.querySelector(".f-inspected").checked,
+    status: card.querySelector(".f-status").value || "",
+    notes: card.querySelector(".f-notes").value || ""
+  }));
+}
+
+function renderAll(scaffolds){
+  const list = document.getElementById("scaffoldList");
+  list.innerHTML = "";
+  scaffolds.forEach(s => list.appendChild(renderCard(s)));
+  updateSummary();
+}
+
+function renderCard(s){
+  const card = document.createElement("div");
+  card.className = "scaffold-item";
+  card.dataset.id = s.id;
+
+  card.innerHTML = `
+    <div class="scaffold-head">
+      <div class="pill">Scaffold</div>
+      <div class="toggle">
+        <label style="margin:0; color:var(--muted); font-size:12px;">Inspected</label>
+        <input class="f-inspected" type="checkbox" aria-label="Inspected today">
+      </div>
+    </div>
+
+    <div class="row two">
+      <div>
+        <label>Tag #</label>
+        <input class="f-tag" type="text" inputmode="text" placeholder="e.g., 0123">
+      </div>
+      <div>
+        <label>Location</label>
+        <input class="f-loc" type="text" inputmode="text" placeholder="Area / Floor / Grid">
+      </div>
+    </div>
+
+    <div class="row two" style="margin-top:10px;">
+      <div>
+        <label>Status</label>
+        <select class="f-status">
+          <option value="">Select</option>
+          <option value="Green">Green (Safe)</option>
+          <option value="Yellow">Yellow (Caution)</option>
+          <option value="Red">Red (Do Not Use)</option>
+        </select>
+      </div>
+      <div>
+        <label>Notes</label>
+        <input class="f-notes" type="text" inputmode="text" placeholder="Comments / issues found">
+      </div>
+    </div>
+
+    <div class="btn-row" style="margin-top:10px; justify-content:flex-end;">
+      <button class="btn-danger" type="button" aria-label="Remove scaffold">Remove</button>
+    </div>
+  `;
+
+  // Set values
+  card.querySelector(".f-tag").value = s.tag || "";
+  card.querySelector(".f-loc").value = s.location || "";
+  card.querySelector(".f-inspected").checked = !!s.inspected;
+  card.querySelector(".f-status").value = s.status || "";
+  card.querySelector(".f-notes").value = s.notes || "";
+
+  // Wire events
+  const onChange = () => { applyCardStyles(card); updateSummary(); save(); };
+  card.querySelectorAll("input, select").forEach(el => {
+    el.addEventListener("input", onChange);
+    el.addEventListener("change", onChange);
+  });
+
+  card.querySelector(".btn-danger").addEventListener("click", () => {
+    card.remove();
+    updateSummary();
+    save();
+  });
+
+  // initial styles
+  applyCardStyles(card);
+
+  return card;
+}
+
+function applyCardStyles(card){
+  card.classList.remove("status-green","status-yellow","status-red","not-inspected");
+
+  const tag = (card.querySelector(".f-tag").value || "").trim();
+  const loc = (card.querySelector(".f-loc").value || "").trim();
+  const status = card.querySelector(".f-status").value || "";
+  const inspected = !!card.querySelector(".f-inspected").checked;
+
+  const hasAnyData = tag || loc || status;
+
+  if(status === "Green") card.classList.add("status-green");
+  if(status === "Yellow") card.classList.add("status-yellow");
+  if(status === "Red") card.classList.add("status-red");
+
+  if(hasAnyData && !inspected){
+    card.classList.add("not-inspected");
+  }
+}
+
+function updateSummary(){
+  const cards = Array.from(document.querySelectorAll(".scaffold-item"));
+  const total = cards.length;
+
+  let inspectedCount = 0;
+  let notInspected = [];
+
+  cards.forEach((card, idx) => {
+    applyCardStyles(card);
+
+    const tag = (card.querySelector(".f-tag").value || "").trim();
+    const loc = (card.querySelector(".f-loc").value || "").trim();
+    const status = card.querySelector(".f-status").value || "";
+    const inspected = !!card.querySelector(".f-inspected").checked;
+
+    const hasAnyData = tag || loc || status;
+
+    if(hasAnyData){
+      if(inspected) inspectedCount++;
+      else notInspected.push(tag || `Scaffold ${idx+1}`);
+    }
+  });
+
+  document.getElementById("totalScaffolds").textContent = total;
+  document.getElementById("inspectedCount").textContent = inspectedCount;
+  document.getElementById("notInspectedCount").textContent = notInspected.length;
+
+  const alertBox = document.getElementById("notInspectedAlert");
+  const list = document.getElementById("notInspectedList");
+  list.innerHTML = "";
+
+  if(notInspected.length > 0){
+    alertBox.style.display = "block";
+    notInspected.forEach(t => {
+      const li = document.createElement("li");
+      li.textContent = t;
+      list.appendChild(li);
+    });
+  }else{
+    alertBox.style.display = "none";
+  }
+}
+
+function addScaffold(){
+  const list = document.getElementById("scaffoldList");
+  const s = defaultScaffold();
+  list.appendChild(renderCard(s));
+  updateSummary();
+  save();
+
+  // Scroll new card into view for mobile
+  const last = list.lastElementChild;
+  if(last && last.scrollIntoView) last.scrollIntoView({behavior:"smooth", block:"start"});
+}
+
+/* Export / Import */
+function downloadBackup(){
+  const data = JSON.stringify(getState(), null, 2);
+  const blob = new Blob([data], {type:"application/json"});
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  const date = (document.getElementById("reportDate").value || new Date().toISOString().slice(0,10));
+  a.href = url;
+  a.download = `scaffold-tracker-backup-${date}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function triggerImport(){
+  document.getElementById("importFile").click();
+}
+
+document.getElementById("importFile").addEventListener("change", async (e) => {
+  const file = e.target.files && e.target.files[0];
+  if(!file) return;
+
+  try{
+    const text = await file.text();
+    const data = JSON.parse(text);
+
+    if(!data || typeof data !== "object" || !Array.isArray(data.scaffolds)){
+      alert("Invalid backup file.");
+      return;
+    }
+
+    setMeta(data.meta || {});
+    renderAll(data.scaffolds.map(s => ({
+      id: s.id || uid(),
+      tag: s.tag || "",
+      location: s.location || "",
+      inspected: !!s.inspected,
+      status: s.status || "",
+      notes: s.notes || ""
+    })));
+
+    save();
+    alert("Backup imported.");
+  }catch(err){
+    alert("Could not import. Make sure it's a valid JSON backup.");
+  }finally{
+    e.target.value = "";
+  }
+});
+
+function clearAll(){
+  if(!confirm("Clear all scaffold entries and project info?")) return;
+  localStorage.removeItem(STORAGE_KEY);
+  location.reload();
+}
+
+/* Autosave meta fields */
+["projectName","reportDate","competentPerson","globalNotes","inspectorName","inspectorSig"].forEach(id=>{
+  document.getElementById(id).addEventListener("input", () => { updateSummary(); save(); });
+  document.getElementById(id).addEventListener("change", () => { updateSummary(); save(); });
+});
+
+/* Init */
+(function init(){
+  const saved = load();
+
+  // Default date today if empty
+  const today = new Date();
+  const yyyy = today.getFullYear();
+  const mm = String(today.getMonth()+1).padStart(2,"0");
+  const dd = String(today.getDate()).padStart(2,"0");
+  document.getElementById("reportDate").value = `${yyyy}-${mm}-${dd}`;
+
+  if(saved){
+    setMeta(saved.meta || {});
+    // If saved date exists, keep it; else keep default today
+    if(saved.meta && saved.meta.reportDate){
+      document.getElementById("reportDate").value = saved.meta.reportDate;
+    }
+    renderAll(saved.scaffolds && saved.scaffolds.length ? saved.scaffolds : [defaultScaffold()]);
+  }else{
+    renderAll([defaultScaffold()]);
+  }
+
+  // Save immediately so first load persists
+  save();
+})();
+</script>
+
+</body>
+</html>
